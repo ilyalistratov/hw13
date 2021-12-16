@@ -52,6 +52,3 @@
                       count={{count}}
        register: ec2
 
-     - name: Unregister Server
-       shell: echo This server {{ inventory_hostname }} >> /home/log.txt
-       delegate_to: 127.0.0.1

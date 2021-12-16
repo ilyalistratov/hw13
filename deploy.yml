@@ -1,0 +1,54 @@
+---
+- name: install prod app
+  hosts: slave2
+  become: yes
+
+  tasks:
+    - name: Ensure tomcat9 is present
+      apt:
+        name: tomcat9
+        state: present
+
+- name: install bild app
+  hosts: slave1
+  become: yes
+
+  tasks:
+    - name: Ensure maven is present
+      apt:
+        name: maven
+        state: present
+
+    - name: Ensure git is present
+      apt:
+        name: git
+        state: present
+
+    - name: Ckeck up
+      git:
+        repo: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+        dest: /home/repo/
+        clone: yes
+        update: yes
+
+    - name: bild code
+      shell: "cd /home/repo && mvn package"
+
+    - name: copy file
+      synchronize:
+        mode: pull
+        src: /home/repo/target/*.war
+        dest: /tmp
+      delegate_to: 127.0.0.1
+
+- name: ensure war file in slave2
+  hosts: slave2
+  become: yes
+
+  tasks:
+    - name: war file to master
+      synchronize:
+        mode: push
+        src: /tmp/hello-1.0.war
+        dest: /var/lib/tomcat9/webapps/
+      delegate_to: 127.0.0.1
