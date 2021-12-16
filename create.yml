@@ -51,3 +51,7 @@
                       keypair={{ keypair }}
                       count={{count}}
        register: ec2
+
+     - name: Unregister Server
+       shell: echo This server {{ inventory_hostname }} and node name is {{ ansible_nodename }} >> /home/log.txt
+       delegate_to: 127.0.0.1
