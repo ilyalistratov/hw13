@@ -1,0 +1,107 @@
+---
+ - name:  provisioning EC2 instances using Ansible
+   hosts: localhost
+   connection: local
+   gather_facts: False
+   tags: provisioning
+
+   vars:
+     keypair: il
+     instance_type: t2.micro
+     image: ami-0fb653ca2d3203ac1
+     wait: yes
+     group: web
+     count: 2
+     region: us-east-2
+     security_group: ruza
+
+   tasks:
+
+     - name: Task # 1 - Create my security group
+       local_action:
+         module: ec2_group
+         name: "{{ security_group }}"
+         description: Security Group for webserver Servers
+         region: "{{ region }}"
+         rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 8080
+              to_port: 8080
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+         rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+       register: basic_firewall
+
+     - name: Task # 2 Launch the new EC2 Instance
+       local_action:  ec2
+                      group={{ security_group }}
+                      instance_type={{ instance_type}}
+                      image={{ image }}
+                      wait=true
+                      region={{ region }}
+                      keypair={{ keypair }}
+                      count={{count}}
+       register: ec2
+
+     - name: install prod app
+       hosts: slave2
+       become: yes
+
+       tasks:
+         - name: Ensure tomcat9 is present
+           apt:
+             name: tomcat9
+             state: present
+
+     - name: install bild app
+       hosts: slave1
+       become: yes
+
+       tasks:
+         - name: Ensure maven is present
+           apt:
+             name: maven
+             state: present
+
+         - name: Ensure git is present
+           apt:
+             name: git
+             state: present
+
+         - name: Ckeck up
+           git:
+             repo: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+             dest: /home/repo/
+             clone: yes
+             update: yes
+
+         - name: bild code
+           shell: "cd /home/repo && mvn package"
+
+         - name: copy file
+           synchronize:
+             mode: pull
+             src: /home/repo/target/*.war
+             dest: /tmp
+           delegate_to: 127.0.0.1
+
+     - name: ensure war file in slave2
+       hosts: slave2
+       become: yes
+
+       tasks:
+         - name: war file to master
+           synchronize:
+             mode: push
+             src: /tmp/hello-1.0.war
+             dest: /var/lib/tomcat9/webapps/
+           delegate_to: 127.0.0.1
