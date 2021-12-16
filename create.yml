@@ -11,7 +11,7 @@
      image: ami-0fb653ca2d3203ac1
      wait: yes
      group: web
-     count: 1
+     count: 2
      region: us-east-2
      security_group: ruza
 
@@ -53,5 +53,5 @@
        register: ec2
 
      - name: Unregister Server
-       shell: echo This server {{ inventory_hostname }} and node name is {{ ansible_nodename }} >> /home/log.txt
+       shell: echo This server {{ inventory_hostname }} >> /home/log.txt
        delegate_to: 127.0.0.1
